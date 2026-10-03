@@ -1,0 +1,36 @@
+steps:
+  # 1. Compilar imagen de Docker con un tag válido (sin guion al final)
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/trabajo-final/dashboar-motores:$COMMIT_SHA'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/trabajo-final/dashboar-motores:latest'
+      - '.'
+
+  # 2. Subir imagen a Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/trabajo-final/dashboar-motores:$COMMIT_SHA'
+
+  # 3. Desplegar automáticamente a Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'dashboar-motores'
+      - '--image'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/trabajo-final/dashboar-motores:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '8080'
+
+images:
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/trabajo-final/dashboar-motores:$COMMIT_SHA'
