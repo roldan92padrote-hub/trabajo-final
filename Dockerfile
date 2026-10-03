@@ -1,23 +1,31 @@
-# Imagen base oficial y ligera de Node.js (LTS)
+# ===================================================================
+# Dockerfile optimizado para Google Cloud Run
+# ===================================================================
+
+# 1. Imagen base oficial y ligera de Node.js (LTS Alpine)
 FROM node:20-alpine
 
-# Directorio de trabajo dentro del contenedor
+# Definir entorno de producción
+ENV NODE_ENV=production
+
+# 2. Directorio de trabajo
 WORKDIR /app
 
-# Copiar archivos de dependencias primero para aprovechar la caché de Docker
+# 3. Copiar manifiestos de dependencias primero para aprovechar el caché de capas
 COPY package*.json ./
 
-# Instalar dependencias
-RUN npm install --omit=dev
+# 4. Instalar únicamente dependencias de producción de forma limpia
+RUN npm ci --omit=dev || npm install --omit=dev
 
-# Copiar el resto del código fuente del proyecto
-COPY . .
+# 5. Copiar el código fuente y assets asignando permisos al usuario no root 'node'
+COPY --chown=node:node . .
 
-# Puerto expuesto por el contenedor
-EXPOSE 3000
+# 6. Ejecutar como usuario sin privilegios (Seguridad recomendada para Cloud Run)
+USER node
 
-# Variable de entorno para el puerto
-ENV PORT=3000
+# 7. Puerto estándar por defecto inyectado por Google Cloud Run
+ENV PORT=8080
+EXPOSE 8080
 
-# Comando para arrancar el servidor
-CMD ["npm", "start"]
+# 8. Arrancar Node directamente (en lugar de npm) para recibir adecuadamente señales SIGTERM/SIGINT de Cloud Run
+CMD ["node", "index.js"]

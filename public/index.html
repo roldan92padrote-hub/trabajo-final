@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MotorSense | Dashboard de Telemetría: RPM, Temperatura & Amperaje</title>
+  <meta name="description" content="Dashboard visual para monitoreo y telemetría en tiempo real de motores industriales: RPM (Velocidad de rotación), Temperatura térmica y Consumo de Amperaje.">
+  
+  <!-- Google Fonts: Inter, Outfit & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Chart.js 4.4 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+  <!-- Estilos Custom -->
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="dark-theme">
+  <!-- Luces Ambientales de Fondo -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+
+  <!-- Contenedor de la Aplicación -->
+  <div class="app-layout">
+    
+    <!-- Barra Superior / Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="brand-logo">
+          <div class="logo-icon">
+            <i class="fa-solid fa-gauge-high"></i>
+          </div>
+          <div class="brand-text">
+            <div class="brand-title">Motor<span>Sense</span></div>
+            <div class="brand-tag">RPM • Temperatura • Amperaje</div>
+          </div>
+        </div>
+
+        <div class="server-status-pill" id="serverStatusPill">
+          <span class="status-dot"></span>
+          <span class="status-text">Motores en Línea</span>
+          <span class="uptime-badge" id="headerUptime">--</span>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <!-- Selector de Máquina/Motor Activo -->
+        <div class="motor-selector-box">
+          <label for="selectMotorHeader"><i class="fa-solid fa-gears"></i> Equipo:</label>
+          <select id="selectMotorHeader" class="select-header">
+            <option value="todos">Todos los Motores (Flota)</option>
+            <option value="MOT-01">Motor Principal M1 (25HP)</option>
+            <option value="MOT-02">Compresor C1 (Tornillo)</option>
+            <option value="MOT-03">Bomba Centrífuga B1</option>
+            <option value="MOT-04">Turbina Extractora T1</option>
+          </select>
+        </div>
+
+        <!-- Reloj en vivo -->
+        <div class="live-clock" id="liveClock">
+          <i class="fa-regular fa-clock"></i>
+          <span id="currentTime">--:--:--</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- Control de Simulación Continua -->
+        <div class="sim-control-wrapper">
+          <div class="sim-indicator">
+            <span class="sim-pulse" id="simPulse"></span>
+            <span class="sim-label">Simulador de Carga:</span>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btnToggleSim" title="Iniciar/Pausar simulación dinámica de motores">
+            <i class="fa-solid fa-play" id="simIcon"></i>
+            <span id="simText">Simular Operación</span>
+          </button>
+        </div>
+
+        <!-- Botón Exportar CSV -->
+        <a href="/api/mediciones/export/csv" class="btn btn-outline btn-sm" id="btnExportCsv" title="Exportar histórico a CSV">
+          <i class="fa-solid fa-file-arrow-down"></i>
+          <span>Exportar CSV</span>
+        </a>
+
+        <!-- Botón Nueva Medición -->
+        <button class="btn btn-primary btn-sm" id="btnOpenModal" title="Ingresar medición manualmente">
+          <i class="fa-solid fa-plus"></i>
+          <span>Nueva Medición</span>
+        </button>
+
+        <!-- Botón Reset Datos -->
+        <button class="btn btn-ghost btn-icon" id="btnResetData" title="Restablecer dataset inicial">
+          <i class="fa-solid fa-rotate-right"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="dashboard-main">
+      
+      <!-- Fila de Tarjetas KPI / Métricas Principales -->
+      <section class="kpi-grid">
+        
+        <!-- KPI 1: RPM (Velocidad de Rotación) -->
+        <div class="kpi-card glass-panel" id="kpi-rpm">
+          <div class="kpi-header">
+            <div class="kpi-icon-wrap rpm-icon">
+              <i class="fa-solid fa-rotate"></i>
+            </div>
+            <div class="kpi-title-block">
+              <span class="kpi-name">Velocidad de Rotación</span>
+              <span class="kpi-sensor-label" id="labelMotorRpm">Tacómetros Digitales</span>
+            </div>
+            <span class="kpi-status-badge status-normal" id="rpmStatusBadge">Normal</span>
+          </div>
+          <div class="kpi-body">
+            <div class="kpi-value-row">
+              <span class="kpi-value" id="kpiRpmVal">--</span>
+              <span class="kpi-unit">RPM</span>
+            </div>
+            <div class="kpi-stats-footer">
+              <span>Min: <strong id="kpiRpmMin">--</strong> RPM</span>
+              <span class="stat-divider">•</span>
+              <span>Max: <strong id="kpiRpmMax">--</strong> RPM</span>
+            </div>
+          </div>
+          <div class="kpi-progress-bar">
+            <div class="progress-fill rpm-bar" id="kpiRpmBar" style="width: 65%;"></div>
+          </div>
+        </div>
+
+        <!-- KPI 2: Temperatura Térmica (°C) -->
+        <div class="kpi-card glass-panel" id="kpi-temperatura">
+          <div class="kpi-header">
+            <div class="kpi-icon-wrap temp-icon">
+              <i class="fa-solid fa-temperature-arrow-up"></i>
+            </div>
+            <div class="kpi-title-block">
+              <span class="kpi-name">Temperatura de Devanado</span>
+              <span class="kpi-sensor-label" id="labelMotorTemp">Termopares PT100</span>
+            </div>
+            <span class="kpi-status-badge status-normal" id="tempStatusBadge">Normal</span>
+          </div>
+          <div class="kpi-body">
+            <div class="kpi-value-row">
+              <span class="kpi-value" id="kpiTempVal">--</span>
+              <span class="kpi-unit">°C</span>
+            </div>
+            <div class="kpi-stats-footer">
+              <span>Min: <strong id="kpiTempMin">--</strong>°C</span>
+              <span class="stat-divider">•</span>
+              <span>Max: <strong id="kpiTempMax">--</strong>°C</span>
+            </div>
+          </div>
+          <div class="kpi-progress-bar">
+            <div class="progress-fill temp-bar" id="kpiTempBar" style="width: 45%;"></div>
+          </div>
+        </div>
+
+        <!-- KPI 3: Consumo de Amperaje (A) -->
+        <div class="kpi-card glass-panel" id="kpi-amperaje">
+          <div class="kpi-header">
+            <div class="kpi-icon-wrap amp-icon">
+              <i class="fa-solid fa-bolt-lightning"></i>
+            </div>
+            <div class="kpi-title-block">
+              <span class="kpi-name">Consumo de Corriente</span>
+              <span class="kpi-sensor-label" id="labelMotorAmp">Sensores Efecto Hall</span>
+            </div>
+            <span class="kpi-status-badge status-normal" id="ampStatusBadge">Normal</span>
+          </div>
+          <div class="kpi-body">
+            <div class="kpi-value-row">
+              <span class="kpi-value" id="kpiAmpVal">--</span>
+              <span class="kpi-unit">A</span>
+            </div>
+            <div class="kpi-stats-footer">
+              <span>Min: <strong id="kpiAmpMin">--</strong> A</span>
+              <span class="stat-divider">•</span>
+              <span>Max: <strong id="kpiAmpMax">--</strong> A</span>
+            </div>
+          </div>
+          <div class="kpi-progress-bar">
+            <div class="progress-fill amp-bar" id="kpiAmpBar" style="width: 40%;"></div>
+          </div>
+        </div>
+
+        <!-- KPI 4: Potencia Estimada (kW) -->
+        <div class="kpi-card glass-panel" id="kpi-potencia">
+          <div class="kpi-header">
+            <div class="kpi-icon-wrap power-icon">
+              <i class="fa-solid fa-plug-circle-bolt"></i>
+            </div>
+            <div class="kpi-title-block">
+              <span class="kpi-name">Potencia Eléctrica Activa</span>
+              <span class="kpi-sensor-label">Trifásica 440V (cos φ=0.88)</span>
+            </div>
+            <span class="kpi-status-badge status-normal" id="pwrStatusBadge">Normal</span>
+          </div>
+          <div class="kpi-body">
+            <div class="kpi-value-row">
+              <span class="kpi-value" id="kpiPwrVal">--</span>
+              <span class="kpi-unit">kW</span>
+            </div>
+            <div class="kpi-stats-footer">
+              <span>Energía Acumulada: <strong id="kpiEnergiaKwh">--</strong> kWh</span>
+            </div>
+          </div>
+          <div class="kpi-progress-bar">
+            <div class="progress-fill pwr-bar" id="kpiPwrBar" style="width: 50%;"></div>
+          </div>
+        </div>
+
+        <!-- KPI 5: Estado de Motores & Alertas -->
+        <div class="kpi-card glass-panel alerts-summary-card" id="kpi-alerts">
+          <div class="kpi-header">
+            <div class="kpi-icon-wrap alerts-icon">
+              <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div class="kpi-title-block">
+              <span class="kpi-name">Salud Operativa</span>
+              <span class="kpi-sensor-label" id="kpiTotalLecturas">4 motores monitoreados</span>
+            </div>
+          </div>
+          <div class="kpi-alert-pills">
+            <div class="alert-pill-item normal">
+              <i class="fa-solid fa-circle-check"></i>
+              <span class="count" id="countNormal">0</span>
+              <span class="label">Normal</span>
+            </div>
+            <div class="alert-pill-item warning">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+              <span class="count" id="countWarning">0</span>
+              <span class="label">Alerta</span>
+            </div>
+            <div class="alert-pill-item danger">
+              <i class="fa-solid fa-circle-xmark"></i>
+              <span class="count" id="countDanger">0</span>
+              <span class="label">Crítico</span>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Fila de Gráficos e Instrumentación -->
+      <section class="charts-row">
+        
+        <!-- Tarjeta del Gráfico Principal -->
+        <div class="chart-container-card glass-panel">
+          <div class="card-toolbar">
+            <div class="toolbar-title">
+              <div class="icon-bubble">
+                <i class="fa-solid fa-chart-line"></i>
+              </div>
+              <div>
+                <h2>Correlación Dinámica de Telemetría</h2>
+                <p class="section-desc">Evolución sincronizada de Velocidad (RPM), Temperatura (°C) y Corriente (A)</p>
+              </div>
+            </div>
+
+            <div class="chart-controls">
+              <!-- Selector de Variable -->
+              <div class="pill-selector" id="metricTabs">
+                <button class="pill-btn active" data-metric="todas">Correlación Total</button>
+                <button class="pill-btn" data-metric="rpm">RPM</button>
+                <button class="pill-btn" data-metric="temperatura">Temperatura</button>
+                <button class="pill-btn" data-metric="amperaje">Amperaje</button>
+              </div>
+
+              <button class="btn btn-ghost btn-sm" id="btnRefreshChart" title="Actualizar gráfico">
+                <i class="fa-solid fa-arrows-rotate"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Canvas del Gráfico Principal -->
+          <div class="chart-canvas-wrapper">
+            <canvas id="mainChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Tarjeta Lateral de Indicadores / Tacómetros / Gauges -->
+        <div class="side-gauges-card glass-panel">
+          <div class="side-header">
+            <h3><i class="fa-solid fa-gauge"></i> Tacómetro & Tacómetros</h3>
+            <span class="live-tag">DIRECTO</span>
+          </div>
+
+          <!-- Triple Medidor Visual para Motor Seleccionado -->
+          <div class="gauge-meters-box">
+            
+            <!-- Barra RPM -->
+            <div class="meter-item">
+              <div class="meter-label-row">
+                <span><i class="fa-solid fa-rotate" style="color: var(--cyan);"></i> Velocidad RPM</span>
+                <span class="meter-val" id="sideRpmVal">0 RPM</span>
+              </div>
+              <div class="meter-track">
+                <div class="meter-fill rpm-fill" id="sideRpmFill" style="width: 0%;"></div>
+              </div>
+              <div class="meter-scale"><span>0</span><span>2000</span><span>4000 RPM</span></div>
+            </div>
+
+            <!-- Barra Temperatura -->
+            <div class="meter-item">
+              <div class="meter-label-row">
+                <span><i class="fa-solid fa-temperature-high" style="color: var(--amber);"></i> Temperatura</span>
+                <span class="meter-val" id="sideTempVal">0 °C</span>
+              </div>
+              <div class="meter-track">
+                <div class="meter-fill temp-fill" id="sideTempFill" style="width: 0%;"></div>
+              </div>
+              <div class="meter-scale"><span>0°C</span><span>60°C</span><span>120°C</span></div>
+            </div>
+
+            <!-- Barra Amperaje -->
+            <div class="meter-item">
+              <div class="meter-label-row">
+                <span><i class="fa-solid fa-bolt-lightning" style="color: var(--rose);"></i> Amperaje</span>
+                <span class="meter-val" id="sideAmpVal">0 A</span>
+              </div>
+              <div class="meter-track">
+                <div class="meter-fill amp-fill" id="sideAmpFill" style="width: 0%;"></div>
+              </div>
+              <div class="meter-scale"><span>0A</span><span>25A</span><span>50A</span></div>
+            </div>
+
+          </div>
+
+          <!-- Tarjeta de Estado de Máquinas Individuales -->
+          <div class="motor-fleet-status">
+            <div class="gauge-title">Estado de Flota de Motores</div>
+            <div class="fleet-list" id="fleetList">
+              <!-- Renderizado dinámicamente con JS -->
+            </div>
+          </div>
+
+          <!-- Botón de Pulso Rápido -->
+          <button class="btn btn-outline btn-block" id="btnTriggerPulse">
+            <i class="fa-solid fa-bolt"></i>
+            <span>Inyectar Pulso de Carga</span>
+          </button>
+        </div>
+
+      </section>
+
+      <!-- Tabla de Mediciones con Búsqueda y Filtros -->
+      <section class="table-section glass-panel">
+        <div class="table-toolbar">
+          <div class="table-title-group">
+            <h3><i class="fa-solid fa-table-list"></i> Registro de Telemetría de Motores</h3>
+            <span class="badge-counter" id="tableRecordCount">0 registros</span>
+          </div>
+
+          <div class="table-actions">
+            <!-- Barra de Búsqueda -->
+            <div class="search-input-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="searchInput" placeholder="Buscar por motor, ubicación o ID..." autocomplete="off">
+            </div>
+
+            <!-- Filtro por Variable -->
+            <select id="filterTipo" class="select-custom">
+              <option value="todos">Todas las variables</option>
+              <option value="rpm">Velocidad (RPM)</option>
+              <option value="temperatura">Temperatura (°C)</option>
+              <option value="amperaje">Consumo de Amperaje (A)</option>
+            </select>
+
+            <!-- Filtro por Motor -->
+            <select id="filterEquipo" class="select-custom">
+              <option value="todos">Todos los motores</option>
+              <option value="MOT-01">Motor M1</option>
+              <option value="MOT-02">Compresor C1</option>
+              <option value="MOT-03">Bomba B1</option>
+              <option value="MOT-04">Turbina T1</option>
+            </select>
+
+            <!-- Filtro por Estado -->
+            <select id="filterEstado" class="select-custom">
+              <option value="todos">Todos los estados</option>
+              <option value="normal">Solo Normales</option>
+              <option value="advertencia">Solo Advertencias</option>
+              <option value="critico">Solo Críticos</option>
+            </select>
+
+            <!-- Límite de Filas -->
+            <select id="filterLimit" class="select-custom">
+              <option value="25">25 filas</option>
+              <option value="50" selected>50 filas</option>
+              <option value="100">100 filas</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Contenedor Responsivo de la Tabla -->
+        <div class="table-responsive">
+          <table class="data-table" id="medicionesTable">
+            <thead>
+              <tr>
+                <th style="width: 70px;">ID</th>
+                <th>Motor / Equipo</th>
+                <th>Variable de Medición</th>
+                <th>Valor Registrado</th>
+                <th>Estado Operativo</th>
+                <th>Ubicación</th>
+                <th>Hora de Captura</th>
+                <th style="width: 75px; text-align: center;">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <tr>
+                <td colspan="8" class="loading-cell">
+                  <div class="loading-spinner"></div>
+                  <span>Cargando datos de telemetría...</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Footer de la Tabla -->
+        <div class="table-footer">
+          <div class="table-footer-left">
+            <span id="paginationInfo">Mostrando 0 de 0 mediciones</span>
+          </div>
+          <div class="table-footer-right">
+            <span class="auto-refresh-tag">
+              <span class="pulse-indicator"></span> Muestreo activo cada 3.5s
+            </span>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Pie de Página -->
+    <footer class="app-footer">
+      <div>
+        <strong>MotorSense Industrial Telemetry</strong> &copy; 2026 | Sistema de Monitoreo de RPM, Temperatura y Corriente en Node.js
+      </div>
+      <div class="footer-links">
+        <a href="/api/mediciones" target="_blank"><i class="fa-solid fa-code"></i> API JSON</a>
+        <a href="/api/mediciones/stats" target="_blank"><i class="fa-solid fa-chart-pie"></i> Estadísticas Motores</a>
+        <a href="/api/mediciones/servidor" target="_blank"><i class="fa-solid fa-server"></i> Nodo Servidor</a>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Modal para Registrar Nueva Medición -->
+  <div class="modal-overlay" id="modalMedicion">
+    <div class="modal-container glass-panel">
+      <div class="modal-header">
+        <div class="modal-title">
+          <div class="modal-icon">
+            <i class="fa-solid fa-circle-plus"></i>
+          </div>
+          <div>
+            <h3>Registrar Medición de Motor</h3>
+            <p>Ingresa telemetría manual para RPM, Temperatura o Amperaje</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseModal">&times;</button>
+      </div>
+
+      <form id="formNuevaMedicion" class="modal-form">
+        
+        <div class="form-grid">
+          
+          <!-- Seleccionar Motor -->
+          <div class="form-group span-2">
+            <label for="inputEquipo"><i class="fa-solid fa-gears"></i> Motor / Equipo *</label>
+            <select id="inputEquipo" class="form-control" required>
+              <option value="MOT-01">Motor Principal M1 (25HP) - Línea 1</option>
+              <option value="MOT-02">Compresor Industrial C1 - Sala de Compresores</option>
+              <option value="MOT-03">Bomba Centrífuga B1 - Planta de Bombeo</option>
+              <option value="MOT-04">Turbina Extractora T1 - Nave Norte</option>
+              <option value="custom">Otro Motor Personalizado (+)</option>
+            </select>
+          </div>
+
+          <!-- Nombre Personalizado (Opcional) -->
+          <div class="form-group span-2" id="groupNombreCustom" style="display: none;">
+            <label for="inputNombre"><i class="fa-solid fa-tag"></i> Nombre del Motor Personalizado</label>
+            <input type="text" id="inputNombre" class="form-control" placeholder="Ej. Motor de Enfriamiento M5">
+          </div>
+
+          <!-- Tipo de Métrica (RPM, Temperatura, Amperaje) -->
+          <div class="form-group">
+            <label for="inputTipo"><i class="fa-solid fa-gauge"></i> Variable de Medición *</label>
+            <select id="inputTipo" class="form-control" required>
+              <option value="rpm">Velocidad de Rotación (RPM)</option>
+              <option value="temperatura">Temperatura Térmica (°C)</option>
+              <option value="amperaje">Consumo de Corriente (A)</option>
+            </select>
+          </div>
+
+          <!-- Valor de la Medición -->
+          <div class="form-group">
+            <label for="inputValor"><i class="fa-solid fa-calculator"></i> Valor Medido *</label>
+            <div class="input-with-addon">
+              <input type="number" step="0.1" id="inputValor" class="form-control" placeholder="Ej. 2650" required>
+              <span class="input-addon" id="inputUnidadBadge">RPM</span>
+            </div>
+          </div>
+
+          <!-- Ubicación -->
+          <div class="form-group span-2">
+            <label for="inputUbicacion"><i class="fa-solid fa-location-dot"></i> Ubicación en Planta</label>
+            <input type="text" id="inputUbicacion" class="form-control" placeholder="Ej. Nave de Producción Principal">
+          </div>
+
+          <!-- Estado Operativo -->
+          <div class="form-group span-2">
+            <label for="inputEstado"><i class="fa-solid fa-traffic-light"></i> Clasificación de Estado</label>
+            <select id="inputEstado" class="form-control">
+              <option value="">Automático (Calculado según umbrales de seguridad)</option>
+              <option value="normal">Normal (Dentro de tolerancia)</option>
+              <option value="advertencia">Advertencia (Acercándose a límite)</option>
+              <option value="critico">Crítico (Sobrepasó umbral de fallo)</option>
+            </select>
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="btnCancelModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitMedicion">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <span>Guardar Medición</span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- Contenedor para Notificaciones Toast -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Script Principal de la App -->
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>
